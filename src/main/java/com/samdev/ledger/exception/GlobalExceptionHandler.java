@@ -1,11 +1,13 @@
 package com.samdev.ledger.exception;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import java.time.DateTimeException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -31,6 +33,24 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleConcurrentUpdate(ObjectOptimisticLockingFailureException ex) 
     {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "The account was updated by another request. Please retry.");
+    }
+
+    @ExceptionHandler(DateTimeException.class)
+    public ProblemDetail handleBadDate(DateTimeException ex) 
+    {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+        @ExceptionHandler(IdempotencyConflictException.class)
+    public ProblemDetail handleIdempotencyConflict(IdempotencyConflictException ex) 
+    {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDuplicate(DataIntegrityViolationException ex) 
+    {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "This request conflicts with one already being processed. Please retry.");
     }
     
 }

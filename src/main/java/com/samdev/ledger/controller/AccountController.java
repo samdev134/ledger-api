@@ -3,12 +3,14 @@ package com.samdev.ledger.controller;
 import com.samdev.ledger.dto.AccountResponse;
 import com.samdev.ledger.dto.AmountRequest;
 import com.samdev.ledger.dto.CreateAccountRequest;
+import com.samdev.ledger.dto.MonthlySummaryResponse;
 import com.samdev.ledger.dto.TransactionResponse;
 import com.samdev.ledger.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+
 
 @RestController 
 @RequestMapping("/api/accounts")
@@ -51,4 +53,9 @@ public class AccountController {
         return AccountResponse.from(service.get(id));
     }
     
+    @GetMapping("/{id}/summary")
+    public MonthlySummaryResponse summary(@PathVariable Long id, @RequestParam int year, @RequestParam int month) 
+    {
+        return service.monthlySummary(id, year, month);
+    }
 }

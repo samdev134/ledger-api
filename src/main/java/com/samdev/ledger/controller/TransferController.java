@@ -17,9 +17,10 @@ public class TransferController
         this.service = service;
     }
 
-    @PostMapping 
-    public TransferResponse transfer(@Valid  @RequestBody TransferRequest request)
+    @PostMapping
+    public TransferResponse transfer(
+    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey, @Valid @RequestBody TransferRequest request) 
     {
-        return service.transfer(request);
+        return service.transfer(request, idempotencyKey);
     }
 }

@@ -1,6 +1,7 @@
 package com.samdev.ledger.service;
 
 import com.samdev.ledger.dto.CreateAccountRequest;
+import com.samdev.ledger.dto.MonthlySummaryResponse;
 import com.samdev.ledger.exception.AccountNotFoundException;
 import com.samdev.ledger.model.Account;
 import com.samdev.ledger.model.Transaction;
@@ -11,7 +12,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class AccountService {
@@ -63,4 +70,36 @@ public class AccountService {
                 .findByAccountIdOrderByCreatedAtDesc(accountId, PageRequest.of(page, size))
                 .getContent();
     }
+
+    @Transactional(readOnly = true)
+    public MonthlySummaryResponse monthlySummary(Long accountId, int year, int month) 
+    {
+        get(accountId); // 404 if the account doesn't exist
+
+        YearMonth period = YearMonth.of(year, month); // throws if month isn't 1-12
+        Instant from = period.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant to = period.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+        List<Transaction> transactions = transactionRepository.findInPeriod(accountId, from, to);
+
+        BigDecimal totalIn = transactions.stream()
+                .filter(t -> t.getType().isCredit())
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalOut = transactions.stream()
+                .filter(t -> !t.getType().isCredit())
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<TransactionType, BigDecimal> totalsByType = transactions.stream()
+                .collect(Collectors.groupingBy(
+                        Transaction::getType,
+                        () -> new EnumMap<>(TransactionType.class),
+                        Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)));
+
+        return new MonthlySummaryResponse(accountId, period.toString(), totalIn, totalOut,
+                totalIn.subtract(totalOut), transactions.size(), totalsByType);
+    }
+    
 }
